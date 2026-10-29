@@ -1,0 +1,4 @@
+payment_type,invoices,revenue,pct_of_invoices
+Cash,7,6930.0,38.9
+Debit,5,5650.0,27.8
+Credit,6,5240.0,33.3

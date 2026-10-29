@@ -1,0 +1,21 @@
+# MySQL 8 with the schema + sample data loaded automatically on first start.
+#   docker compose up -d
+#   mysql -h 127.0.0.1 -uroot -proot restaurant        (or connect MySQL Workbench to localhost:3306)
+services:
+  mysql:
+    image: mysql:8.0
+    command:
+      - --lower-case-table-names=1          # scripts mix table-name case (written on Windows)
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: restaurant
+    ports:
+      - "3306:3306"
+    volumes:
+      - "./SQL Files/Table creation and inserting value.sql:/docker-entrypoint-initdb.d/01_schema_and_data.sql:ro"
+      - "./SQL Files/indexes_and_optimization.sql:/docker-entrypoint-initdb.d/02_indexes.sql:ro"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      retries: 20

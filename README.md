@@ -1,34 +1,95 @@
-# Restaurant-Data-Analysis-Management-for-Informed-Decision-Making
-The Restaurant Data Analysis Management System is a comprehensive software solution designed to 
-empower restaurant owners and managers with data-driven insights for informed decision-making. 
-Recognizing the significance of operational efficiency, enhanced customer experiences, and data driven decision-making in the competitive restaurant industry, this project focuses on creating a robust 
-database and implementing data analysis techniques.
+# Restaurant Data Analysis & Management
 
-Installing Dependencies
-- MySQL Workbench >= 8.0.
-- Scripts included in the SQL Files.
+![CI](https://github.com/Soumithroy/Restaurant-Data-Analysis-Management-for-Informed-Decision-Making/actions/workflows/ci.yml/badge.svg)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1) ![Python](https://img.shields.io/badge/Python-pandas%20%7C%20matplotlib-3776AB) ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)
 
-Download and Setup
-1. For Database Creation
-   - From MySQL Workbench open the Table creation and inserting value.sql script.
-   - Execute the SQL file whis will create database tables and inserts values to it.
-2. To Run SQL queries for analysis
-   - From MySQL Workbench open the SQL Queries.sql script.
-   - Here You will find SQL queries that we used for analysing our database.
+A relational database and analytics project that helps restaurant owners make **data-driven decisions**:
+a normalized MySQL schema for a food-delivery business (restaurants, customers, menus, orders, invoices,
+delivery staff, deals and ratings), SQL analysis queries, query optimization, role-based access control,
+and an automated **Python analytics report** with charts.
 
-Motivation: The Restaurant Management System is a comprehensive database and software solution developed to assist restaurants in enhancing their operations. The decision to create a restaurant management database and conduct data analysis is justified for the following reasons:
-  1. Operational Efficiency: For restaurant owners and managers to simplify their daily operations, handle orders, and enhance their menus, effective data management and analysis are critical. This enables them to make educated decisions that promote productivity and client satisfaction.
-  2. Enhanced Customer Experience: Understanding client preferences, order history, and ratings may lead to improvements in the entire customer experience. As a result, client loyalty and retention improve.
-  3. Data-Driven Decision-Making: Data-driven decision-making is critical in the extremely competitive restaurant sector. Restaurants can quickly adjust to changing market dynamics and make well-informed judgments by acquiring and examining data related to menus, orders, and customer feedback.
+> 📊 **[See the generated analytics report →](reports/REPORT.md)**
 
-Technique List:
-  1.  Database Creation: This involves the creation of tables to represent various entities, including restaurants, customers, cuisines, delivery personnel, deals, menus, orders, invoices, and ratings.
-  2.  Data Initialization: The process of populating these tables with sample data to simulate real-world scenarios, ensuring that the database contains meaningful information for analysis.
-  3. SQL Query Execution: Utilizing a variety of SQL queries for data analysis, encompassing aggregation functions like AVG and COUNT, data filtering using the WHERE clause, and establishing relationships between tables via JOIN and FOREIGN KEY associations.
-  4. Query Enhancement: Implementing techniques for optimizing the performance of database queries, ensuring that they are executed as efficiently as possible.
+## Data model
 
-Goals:
-1. Data Analysis for Decision Support: The primary goal is to provide restaurant owners and managers with the ability to make data-driven decisions. This process includes locating top-rated restaurants, delivery personnel, and menu items. These findings can be used to improve strategic planning, marketing, and service delivery.
-2. User Access Control: Another goal is to ensure secure and controlled access to the database. The project intends to establish a secure user management system to protect the database by creating a MySQL user and assigning specific privileges.
-3. Improved Customer Service: One of the implicit goals could be to use data analysis to improve customer service quality. Identifying the most frequently ordered menu items and customer preferences, for example, can assist restaurants in tailoring their offerings to customer tastes, thereby improving the dining experience.
-4. Efficient Order Management: Allow restaurant owners to manage incoming orders and track their progress in real time.
+![ER Diagram](ER-Diagram/ER%20Diagram%20Restaurant.jpg)
+
+```mermaid
+erDiagram
+  RESTAURANT ||--o{ MENU : offers
+  CUISINE ||--o{ MENU : "describes item"
+  CUSTOMER ||--o{ ORDERS : places
+  RESTAURANT ||--o{ ORDERS : receives
+  MENU ||--o{ ORDERS : "ordered as"
+  ORDERS ||--|| INVOICE : billed
+  DELIVERY_PERSON ||--o{ INVOICE : delivers
+  ORDERS ||--o{ RATING : "rated in"
+  DEALS }o..o{ INVOICE : "discount by weekday & membership"
+```
+
+9 tables: `Restaurant`, `Customer`, `Cuisine`, `Menu`, `Orders`, `Invoice`, `Delivery_Person`, `Deals`, `Rating`.
+
+## What's inside
+
+| Path | Contents |
+|---|---|
+| `SQL Files/Table creation and inserting value.sql` | Schema (primary/foreign keys) + sample data |
+| `SQL Files/SQL Queries.sql` | Original analysis queries — window functions (`RANK`, `DENSE_RANK`), multi-table `JOIN`s, aggregations, `UNION` |
+| `SQL Files/indexes_and_optimization.sql` | Indexes for the hot joins/filters + `EXPLAIN` plan |
+| `SQL Files/user_access_control.sql` | Least-privilege users: read-only analyst and application account |
+| `analysis/kpi_queries.sql` | Portable KPI queries using CTEs (MySQL 8 `ONLY_FULL_GROUP_BY`-safe) |
+| `analysis/analyze.py` | Runs the KPIs, exports CSVs, draws charts, writes `reports/REPORT.md` |
+| `analysis/test_queries.py` | pytest smoke tests: every original + KPI query executes |
+| `docker-compose.yml` | MySQL 8 that auto-loads schema, data and indexes |
+| `Report/Project Report.pdf` | Full project report |
+
+## Business questions answered
+
+- Top-rated restaurants, delivery partners and menu items (overall and per restaurant / cuisine)
+- Most-ordered item per cuisine and most-ordered cuisine
+- Revenue by month, by restaurant (top & bottom), by payment type, and by discount level
+- Delivery-partner performance: deliveries, revenue delivered, average rating
+- Premium vs. standard customer behaviour
+- **Data-quality checks** — e.g. invoices referencing orders that have no order lines
+
+### Sample findings (from the included data)
+
+- Total revenue **₹17,820** across 18 invoices; average order value **₹990**
+- **Cash** is the most common payment method (39% of invoices)
+- **Vegetable Biryani** is the best-selling item; **Spicy Venue** is the top-rated restaurant
+- **12 of 18 invoices** have no matching order lines → recommended adding a foreign key on `Invoice.order_id`
+
+![Monthly revenue](reports/monthly_revenue.png)
+
+## Run it
+
+**1. Database (Docker — no MySQL install needed)**
+```bash
+docker compose up -d                                   # MySQL 8 on localhost:3306, user root / root
+mysql -h 127.0.0.1 -uroot -proot restaurant < "SQL Files/SQL Queries.sql"
+```
+Or use **MySQL Workbench**: run `Table creation and inserting value.sql`, then `SQL Queries.sql`.
+
+**2. Analytics report**
+```bash
+pip install -r analysis/requirements.txt
+python analysis/analyze.py          # writes reports/REPORT.md, CSVs and charts
+cd analysis && pytest -q            # every query runs cleanly
+```
+
+CI (GitHub Actions) spins up MySQL 8, loads the schema, applies indexes and user grants, runs every query
+as a test, and uploads the generated report as a build artifact.
+
+## Techniques
+
+- Relational modelling with primary / composite / foreign keys
+- Window functions (`RANK`, `DENSE_RANK`, `SUM() OVER()`), CTEs, subqueries, `UNION`
+- Indexing and `EXPLAIN`-driven query optimization
+- Role-based access control with `CREATE USER` / `GRANT`
+- Python data pipeline: SQLAlchemy → pandas → matplotlib → Markdown report
+
+## Known limitations & next steps
+
+- Sample data stores passwords in plain text — a production system should store salted hashes (bcrypt/argon2).
+- Several "last N days" queries use `NOW()` and return no rows for the 2022–2023 sample data; anchoring to `(SELECT MAX(order_date) FROM Invoice)` (as in `indexes_and_optimization.sql`) makes them work on historical data.
+- Next: enforce `Invoice.order_id` → `Orders` foreign key, add a BI dashboard (Power BI / Streamlit), and generate larger synthetic data for performance testing.
